@@ -55,7 +55,7 @@ class lawyer_sel(scrapy.Spider):
 
 	source_list = []
 
-	timeout = 5
+	timeout = 7
 
 	def __init__(self):
 
@@ -69,7 +69,9 @@ class lawyer_sel(scrapy.Spider):
 
 		dispatcher.connect(self.spider_closed, signals.spider_closed)
 
-		self.myfile = "AI - Appenzell Inner-Rhodes"
+		# "ZH - Zurich", "GE - Geneva", "VD - Vaud"
+
+		self.myfile = "ZH - Zurich"
 
 	def spider_closed(self, spider):
 
@@ -163,9 +165,12 @@ class lawyer_sel(scrapy.Spider):
 
 		except:
 
-			pdb.set_trace()	
+			pdb.set_trace()
+
+		count = 0
 
 		while True:
+
 
 			a_element_present = EC.presence_of_element_located((By.ID, 'anwaltssuche'))
 			
@@ -177,7 +182,7 @@ class lawyer_sel(scrapy.Spider):
 
 				profile.click()
 
-				time.sleep(4)
+				time.sleep(10)
 
 				source = self.driver.page_source.encode("utf8")
 
@@ -185,7 +190,7 @@ class lawyer_sel(scrapy.Spider):
 
 				item = ChainItem()
 
-				data_list = self.eliminate_space(tree.xpath('//div[@class="kanzlei"]//text()'))
+				data_list = self.eliminate_space(tree.xpath('//div[@class="detail"]//text()'))
 
 				data = ' '.join(data_list)
 
@@ -193,7 +198,13 @@ class lawyer_sel(scrapy.Spider):
 
 					item['name'] = self.validate(tree.xpath('//h2/text()')[1])
 
-					item['address'] = ' '.join(self.validate(data.split('Address:')[1].split(':')[0]).split(' ')[:-2])
+					try:
+
+						item['address'] = ' '.join(self.validate(data.split('Address:')[1].split(':')[0]).split(' ')[:-1])
+
+					except:
+
+						item['address'] = ''
 
 					item['email'] = ''
 
@@ -201,32 +212,50 @@ class lawyer_sel(scrapy.Spider):
 
 					for idx, val in enumerate(data_list):
 
-						try:
+						if 'office'  in val.lower():
 
-							if 'telephone' in val.lower():
+							break
 
-								item['phone'] = data_list[idx+1]
+						if 'telephone' in val.lower():
 
-							if 'mail' in val.lower():
+							item['phone'] = data_list[idx+1]
 
-								item['email'] = data_list[idx+1].replace('[at]', '@').replace('[dot]', '.')
+							break
 
-						except:
 
-							pass
+					for idx, val in enumerate(data_list):
 
-					item['office'] = self.validate(tree.xpath('//h3/span/text()')[0])
+						if 'office'  in val.lower():
+
+							break
+
+						if 'mail' in val.lower():
+
+							item['email'] = data_list[idx+1].replace('[at]', '@').replace('[dot]', '.')
+
+							break
+
+					try:
+
+						item['office'] = self.validate(tree.xpath('//h3/span/text()')[0])
+
+					except:
+
+						item['office'] = ''
 
 
 					self.output.append(item)
 
 				except Exception as e:
 
-					print('~~~~~~~~~~~~~~~~~~~~', e)
-
 					pass
 
+			count += 1
+
+			print('~~~~~~~~~~~~~~~~~~~~~~~', count)
 			try:
+
+				time.sleep(5)
 
 				next_bt = self.driver.find_element_by_xpath('//a[@class="button naechste"]')
 
@@ -234,11 +263,17 @@ class lawyer_sel(scrapy.Spider):
 
 					next_bt.click()
 
+					time.sleep(15)
+
 				else:
+
+					print('**************** end **********************')
 
 					break
 
-			except:
+			except Exception as e:
+
+				print('############## exception : ', e)
 
 				break
 
@@ -268,7 +303,7 @@ class lawyer_sel(scrapy.Spider):
 		return tmp
 
 
-class UnicodeWriter
+class UnicodeWriter:
 
 
 	def __init__(self, f, dialect=csv.excel, encoding="utf-8-sig", **kwds):
